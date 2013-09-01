@@ -1,4 +1,5 @@
 haysearch
 =========
 
-A movie search using haystack and whoosh
+A movie search using haystack and whoosh.
+一个使用haystack 与whoosh的电影搜索站。使用whoosh的人很少，我用着用着就越来越喜欢。网上虽然有很多对whoosh的测试，如果要看运行效果或看如何去使用whoosh，可以参考这个网站的源代码：http.v-find.com. 这个网站仅限于自己与几个朋友使用，所以可能没多久就关了:)

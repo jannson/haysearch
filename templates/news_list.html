@@ -1,0 +1,34 @@
+<html><head><title>专业的电影搜索，迅雷离线搜索网站，离线资源，高清视频</title>
+<meta name="description" content="电影搜索站，迅雷离线下载站，高清视频播放，保证迅雷有源，电影更新频繁"/>
+  <link rel="shortcut icon" href="/favicon.ico" />
+        <meta charset="utf-8"/>
+        <style>
+            img{border:0px currentcolor}:focus{outline:0px}h1{font-size:100%;font-weight:normal}h3{font-size:100%;font-weight:normal}a{text-decoration:none}body{font-family:微软雅黑;font-size:14px;background-image:url(http://1-ps.googleusercontent.com/h/download.wohuia.com/images/xbg_bd.png.pagespeed.ic.7i8eUJulab.png);background-color:#fff;color:#333;line-height:1.5;background-position:initial initial;background-repeat:initial initial}
+        </style>
+    </head>
+    <body>
+        <div style="word-wrap: break-word; word-break: break-all; font-size: 20px; width: 960px; padding:20px;">
+{% if is_paginated %}{% load paginator %}{% endif %}
+
+{% if object_list %}
+    {% for obj in object_list %}
+        <p>
+        <a href="/new/{{ obj.id }}/" alt='{{obj.title}}' target='blank'>{{obj.title}}</a><br/>  
+            {{ obj.info|safe }}
+            <font size="-1">摘要：{{ obj.summerize|safe }}</font>
+        </p>  
+    {% endfor %}
+{% endif %}
+
+{% if page_obj.has_previous %}
+  <a href= "?page={{ page_obj.previous_page_number }}">Previous</a>
+{% endif %}
+<span class="current">
+  &nbsp;Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+</span>
+{% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}">Next </a>
+  {% endif %}
+        </div>
+    </body>
+</html>

@@ -1,0 +1,62 @@
+{% load result_tag more_like_this %}
+<html><head><title>{{entry.title|beauty3}}</title>
+        <meta charset="utf-8"/>
+<meta name="description" content="电影搜索站，迅雷离线下载站，高清视频播放，保证迅雷有源，电影更新频繁"/>
+  <link rel="shortcut icon" href="/favicon.ico" />
+        <style>
+            img{border:0px currentcolor}:focus{outline:0px}h1{font-size:100%;font-weight:normal}h3{font-size:100%;font-weight:normal}a{text-decoration:none}body{font-family:微软雅黑;font-size:14px;background-image:url(http://1-ps.googleusercontent.com/h/download.wohuia.com/images/xbg_bd.png.pagespeed.ic.7i8eUJulab.png);background-color:#fff;color:#333;line-height:1.5;background-position:initial initial;background-repeat:initial initial}
+        </style>
+    </head>
+    <body>
+<div style="word-wrap: break-word; word-break: break-all; font-size: 20px; width: 960px; padding:20px;">
+<p>标题：{{entry.title}}</p>
+<p>评分：{{entry.rating}}分</p>
+<p>信息：<br/>{{entry.info}}</p>
+<p>{{entry.description}}</p>
+<p>
+标签： 
+{% for tag in entry.tag_list %}
+<a href='/tag/{{tag|safe}}' alt="{{tag|safe}}">{{tag}}</a>
+{% endfor %}
+</p>
+<p>
+关键字： 
+{% for tag in entry.key_word_list %}
+<a href='/search/?q={{tag|safe}}' rel="nofollow" alt="{{tag|safe}}">{{tag}}</a>
+{% endfor %}
+</p>
+<p>
+下载地址：<br/>
+<ul>
+    {% for mv in entry.movie_link_set %}
+    <li>
+    <a id='mv_{{mv.id}}' href='{{mv.url|urlencode:""}}'>{{mv.title|beauty:entry.title}}</a>
+    <ul>
+        <a target='_blank' href='http://vod.xunlei.com/share.html?from=kuaichuan_web&url={{mv.url|urlencode:""}}'>会员播放</a>
+        <a target='_blank' href='http://lixian.vip.xunlei.com/lixian_login.html?furl={{mv.url|urlencode:""}}'>离线下载</a>
+        <a target='_blank' href='http://www.hdp4p.com/vod/#URL={{mv.url|urlencode:""}}'>播放1</a>
+        <a target='_blank' href='http://www.997m.com/?u={{mv.url|urlencode:""}}'>播放2</a>
+        <a target='_blank' href='http://www.huanggua001.com/?u={{mv.url|urlencode:""}}'>播放3</a>
+        <a target='_blank' href='http://vod.7ibt.com/index.php?url={{mv.url|urlencode:""}}'>播放4</a>
+        <a target='_blank' href='http://www.happyfuns.com/happyvod/?url={{mv.url|urlencode:""}}'>播放5</a>
+        <a target='_blank' href='http://www.tvgua.com/?url={{mv.url|urlencode:""}}'>播放6</a>
+    </ul>
+    </li>
+    {% endfor %}
+    </p>
+
+{% more_like_this entry as related_content limit 8 %}
+{% if related_content %}
+<div>
+    <br/>
+    <p><strong>相似内容：</strong></p>
+    <ul>
+        {% for related in related_content %}
+        <li><a href='/subject/{{related.pk}}'  rel="nofollow">{{ related.title|beauty2:related.text}}</a></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+<div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<html><head><title>{{entry.title}}</title>
+        <meta charset="utf-8"/>
+<meta name="description" content="电影搜索站，迅雷离线下载站，高清视频播放，保证迅雷有源，电影更新频繁"/>
+  <link rel="shortcut icon" href="/favicon.ico" />
+        <style>
+            img{border:0px currentcolor}:focus{outline:0px}h1{font-size:100%;font-weight:normal}h3{font-size:100%;font-weight:normal}a{text-decoration:none}body{font-family:微软雅黑;font-size:14px;background-image:url(http://1-ps.googleusercontent.com/h/download.wohuia.com/images/xbg_bd.png.pagespeed.ic.7i8eUJulab.png);background-color:#fff;color:#333;line-height:1.5;background-position:initial initial;background-repeat:initial initial}
+        </style>
+    </head>
+    <body>
+        <div style="word-wrap: break-word; word-break: break-all; font-size: 20px; width: 960px; padding:20px;">
+            <p>{{entry.title}}</p>
+            <p>原文链接：<a href='{{entry.url}}'>{{entry.url}}</a></p>
+<p>
+关键字： 
+{% for tag in entry.key_word_list %}
+{{tag}}
+{% endfor %}
+</p>
+            <p>{{entry.preview|safe}}</p>
+    </div>
+</body>
+</html>
