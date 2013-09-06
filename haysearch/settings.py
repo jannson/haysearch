@@ -17,6 +17,7 @@ HAYSTACK_CONNECTIONS = {
     'default': {
         'ENGINE': 'haystack.backends.whoosh_cn_backend.WhooshEngine',
         'PATH': os.path.join(PROJECT_PATH, 'whoosh_index'),
+        #'INCLUDE_SPELLING': True,
     },
 }
 

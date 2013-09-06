@@ -80,7 +80,7 @@ class Preview(models.Model):
 
 class MovieNews(models.Model):
     title=models.CharField(max_length=200)
-    url=models.URLField(max_length=200)
+    url=models.URLField(max_length=200, unique=True)
     info=models.CharField(max_length=400)
     summerize=models.CharField(max_length=400)
     content=models.TextField()

@@ -35,12 +35,13 @@ except ImportError:
 from whoosh.analysis import StemmingAnalyzer
 from whoosh.fields import Schema, IDLIST, STORED, TEXT, KEYWORD, NUMERIC, BOOLEAN, DATETIME, NGRAM, NGRAMWORDS
 from whoosh.fields import ID as WHOOSH_ID
-from whoosh import index, query, sorting
+from whoosh import index, query, sorting, scoring
 from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.filedb.filestore import FileStorage, RamStorage
 from whoosh.searching import ResultsPage
 #from whoosh.spelling import SpellChecker
 from whoosh.writing import AsyncWriter
+#from whoosh.collectors import TimeLimitedCollector
 
 # Handle minimum requirement.
 if not hasattr(whoosh, '__version__') or whoosh.__version__ < (1, 8, 4):
@@ -74,6 +75,7 @@ class WhooshSearchBackend(BaseSearchBackend):
         self.use_file_storage = True
         self.post_limit = getattr(connection_options, 'POST_LIMIT', 128 * 1024 * 1024)
         self.path = connection_options.get('PATH')
+        self.weight_score = scoring.BM25F(B=0, K1=1.2)
 
         if connection_options.get('STORAGE', 'file') != 'file':
             self.use_file_storage = False
@@ -142,9 +144,9 @@ class WhooshSearchBackend(BaseSearchBackend):
             elif field_class.field_type in ['date', 'datetime']:
                 schema_fields[field_class.index_fieldname] = DATETIME(stored=field_class.stored)
             elif field_class.field_type == 'integer':
-                schema_fields[field_class.index_fieldname] = NUMERIC(stored=field_class.stored, numtype=int, field_boost=field_class.boost)
+                schema_fields[field_class.index_fieldname] = NUMERIC(stored=field_class.stored, numtype=int, field_boost=field_class.boost, sortable=True)
             elif field_class.field_type == 'float':
-                schema_fields[field_class.index_fieldname] = NUMERIC(stored=field_class.stored, numtype=float, field_boost=field_class.boost)
+                schema_fields[field_class.index_fieldname] = NUMERIC(stored=field_class.stored, type=float, field_boost=field_class.boost)
             elif field_class.field_type == 'boolean':
                 # Field boost isn't supported on BOOLEAN as of 1.8.2.
                 schema_fields[field_class.index_fieldname] = BOOLEAN(stored=field_class.stored)
@@ -154,7 +156,7 @@ class WhooshSearchBackend(BaseSearchBackend):
                 schema_fields[field_class.index_fieldname] = NGRAMWORDS(minsize=2, maxsize=15, at='start', stored=field_class.stored, field_boost=field_class.boost)
             else:
                 #schema_fields[field_class.index_fieldname] = TEXT(stored=True, analyzer=StemmingAnalyzer(), field_boost=field_class.boost)
-                schema_fields[field_class.index_fieldname] = TEXT(stored=True, analyzer=ChineseAnalyzer(), field_boost=field_class.boost)
+                schema_fields[field_class.index_fieldname] = TEXT(stored=True, analyzer=ChineseAnalyzer(), spelling=True, field_boost=field_class.boost)
 
             if field_class.document is True:
                 content_field_name = field_class.index_fieldname
@@ -202,9 +204,9 @@ class WhooshSearchBackend(BaseSearchBackend):
             writer.commit()
 
             # If spelling support is desired, add to the dictionary.
-            if self.include_spelling is True:
+            '''if self.include_spelling is True:
                 sp = SpellChecker(self.storage)
-                sp.add_field(self.index, self.content_field_name)
+                sp.add_field(self.index, self.content_field_name)'''
 
     def remove(self, obj_or_string, commit=True):
         if not self.setup_complete:
@@ -269,7 +271,7 @@ class WhooshSearchBackend(BaseSearchBackend):
                limit_to_registered_models=None, result_class=None, **kwargs):
         if not self.setup_complete:
             self.setup()
-        
+
         # A zero length query should return no results.
         if len(query_string) == 0:
             return {
@@ -348,11 +350,13 @@ class WhooshSearchBackend(BaseSearchBackend):
             narrow_queries.add(' OR '.join(['%s:%s' % (DJANGO_CT, rm) for rm in model_choices]))
 
         narrow_searcher = None
-        
-        # modify by gan
-        '''if narrow_queries is not None:
+
+        #added by gan
+        narrow_queries = None
+
+        if narrow_queries is not None:
             # Potentially expensive? I don't see another way to do it in Whoosh...
-            narrow_searcher = self.index.searcher()
+            narrow_searcher = self.index.searcher(weighting=self.weight_score)
 
             for nq in narrow_queries:
                 recent_narrowed_results = narrow_searcher.search(self.parser.parse(force_unicode(nq)))
@@ -366,12 +370,12 @@ class WhooshSearchBackend(BaseSearchBackend):
                 if narrowed_results:
                     narrowed_results.filter(recent_narrowed_results)
                 else:
-                   narrowed_results = recent_narrowed_results'''
+                   narrowed_results = recent_narrowed_results
 
         self.index = self.index.refresh()
 
         if self.index.doc_count():
-            searcher = self.index.searcher()
+            searcher = self.index.searcher(weighting=self.weight_score)
             parsed_query = self.parser.parse(query_string)
 
             # In the event of an invalid/stopworded query, recover gracefully.
@@ -386,17 +390,22 @@ class WhooshSearchBackend(BaseSearchBackend):
             if not end_offset is None and end_offset <= 0:
                 end_offset = 1
 
+            #print str(parsed_query).encode('gb2312')
+
             # test by gan
-            test_sort = sorting.FieldFacet("doc_score", reverse=True)
-            test_score = sorting.ScoreFacet()
-            #score_range = query.NumericRange("doc_score", 80, 200) 
+            #facet = sorting.FieldFacet("year", reverse=True)
+            #raw_results = searcher.search(parsed_query, limit=end_offset, groupedby=facet, reverse=reverse)
+            #print raw_results.groups("year")
+            #test_sort = sorting.FieldFacet("doc_score", reverse=True)
+            #test_score = sorting.ScoreFacet()
+            #score_range = query.NumericRange("doc_score", 80, 200)
             #raw_results = searcher.search(parsed_query, limit=end_offset,filter=score_range, sortedby=sort_by, reverse=reverse)
-            raw_results = searcher.search(parsed_query, limit=end_offset, sortedby=[test_sort,test_score])
+            raw_results = searcher.search(parsed_query, limit=end_offset, sortedby=sort_by, reverse=reverse)
+            #raw_results = searcher.search(parsed_query, limit=end_offset, sortedby=[test_sort,test_score])
 
             # Handle the case where the results have been narrowed.
-            # modify by gan
-            '''if narrowed_results is not None:
-                raw_results.filter(narrowed_results)'''
+            if narrowed_results is not None:
+                raw_results.filter(narrowed_results)
 
             # Determine the page.
             page_num = 0
@@ -427,9 +436,9 @@ class WhooshSearchBackend(BaseSearchBackend):
                     'spelling_suggestion': None,
                 }
 
-            results = self._process_results(raw_page, highlight=highlight, query_string=query_string, spelling_query=spelling_query, result_class=result_class)
+            results = self._process_results(raw_page, highlight=highlight, query_string=query_string, spelling_query=spelling_query, result_class=result_class, s=searcher)
             searcher.close()
-
+            
             if hasattr(narrow_searcher, 'close'):
                 narrow_searcher.close()
 
@@ -452,9 +461,9 @@ class WhooshSearchBackend(BaseSearchBackend):
     def more_like_this(self, model_instance, additional_query_string=None,
                        start_offset=0, end_offset=None, models=None,
                        limit_to_registered_models=None, result_class=None, **kwargs):
-        print 'test---more_like_this in backend'
         if not self.setup_complete:
             self.setup()
+
         # Deferred models will have a different class ("RealClass_Deferred_fieldname")
         # which won't be in our registry:
         model_klass = model_instance._meta.concrete_model
@@ -486,13 +495,13 @@ class WhooshSearchBackend(BaseSearchBackend):
             narrow_queries.add(additional_query_string)
 
         narrow_searcher = None
-
-        #modify by gan
+        
+        #added by gan
         narrow_queries = None
 
         if narrow_queries is not None:
             # Potentially expensive? I don't see another way to do it in Whoosh...
-            narrow_searcher = self.index.searcher()
+            narrow_searcher = self.index.searcher(weighting=self.weight_score)
 
             for nq in narrow_queries:
                 recent_narrowed_results = narrow_searcher.search(self.parser.parse(force_unicode(nq)))
@@ -532,11 +541,17 @@ class WhooshSearchBackend(BaseSearchBackend):
 
         self.index = self.index.refresh()
         raw_results = EmptyResults()
+
         if self.index.doc_count():
             query = "%s:%s" % (ID, get_identifier(model_instance))
-            searcher = self.index.searcher()
+            searcher = self.index.searcher(weighting=self.weight_score)
             parsed_query = self.parser.parse(query)
             results = searcher.search(parsed_query)
+
+            #print 'begin.......'
+            #for keyword, score in results.key_terms("text", docs=20, numterms=10):
+            #    print keyword, score
+
             if len(results):
                 raw_results = results[0].more_like_this(field_name, top=end_offset)
 
@@ -556,15 +571,15 @@ class WhooshSearchBackend(BaseSearchBackend):
                 'spelling_suggestion': None,
             }
 
-        results = self._process_results(raw_page, result_class=result_class)
+        results = self._process_results(raw_page, result_class=result_class, s=searcher)
         searcher.close()
 
         if hasattr(narrow_searcher, 'close'):
             narrow_searcher.close()
-        #print type(results['results'][0])
+
         return results
 
-    def _process_results(self, raw_page, highlight=False, query_string='', spelling_query=None, result_class=None):
+    def _process_results(self, raw_page, highlight=False, query_string='', spelling_query=None, result_class=None, s=None):
         from haystack import connections
         results = []
 
@@ -623,9 +638,9 @@ class WhooshSearchBackend(BaseSearchBackend):
 
         if self.include_spelling:
             if spelling_query:
-                spelling_suggestion = self.create_spelling_suggestion(spelling_query)
+                spelling_suggestion = self.create_spelling_suggestion(spelling_query, s)
             else:
-                spelling_suggestion = self.create_spelling_suggestion(query_string)
+                spelling_suggestion = self.create_spelling_suggestion(query_string, s)
 
         return {
             'results': results,
@@ -634,11 +649,14 @@ class WhooshSearchBackend(BaseSearchBackend):
             'spelling_suggestion': spelling_suggestion,
         }
 
-    def create_spelling_suggestion(self, query_string):
+    def create_spelling_suggestion(self, query_string, s):
         spelling_suggestion = None
-        sp = SpellChecker(self.storage)
+        if s is None:
+            print 's is None create_spelling'
+            s = self.index.searcher(weighting=self.weight_score)
+        
         cleaned_query = force_unicode(query_string)
-
+        
         if not query_string:
             return spelling_suggestion
 
@@ -649,17 +667,16 @@ class WhooshSearchBackend(BaseSearchBackend):
         for rev_char in self.RESERVED_CHARACTERS:
             cleaned_query = cleaned_query.replace(rev_char, '')
 
-        # Break it down.
-        query_words = cleaned_query.split()
-        suggested_words = []
+        #qp = QueryParser(self.content_field_name, schema=self.schema)
+        qp = self.parser
+        q = qp.parse(query_string)
+        corrector = s.corrector(self.content_field_name)
+        #corrector.suggest('query_string')
 
-        for word in query_words:
-            suggestions = sp.suggest(word, number=1)
-
-            if len(suggestions) > 0:
-                suggested_words.append(suggestions[0])
-
-        spelling_suggestion = ' '.join(suggested_words)
+        print 'begin suggest'
+        corrected = s.correct_query(q, query_string, corrector, prefix=2)
+        spelling_suggestion = corrected.string
+        print 'end suggest'
         return spelling_suggestion
 
     def _from_python(self, value):
@@ -758,6 +775,7 @@ class WhooshSearchQuery(BaseSearchQuery):
         from haystack import connections
         query_frag = ''
         is_datetime = False
+
         if not hasattr(value, 'input_type_name'):
             # Handle when we've got a ``ValuesListQuerySet``...
             if hasattr(value, 'values_list'):
