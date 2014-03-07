@@ -11,5 +11,5 @@ haystack修改
 ============
 
 把whoosh_cn_backend.py放入到搜索项目 haystack/backend/ 文件夹下
-对这个项目有兴趣可到我的博客：http://www.oschina.net/ 交流
+对这个项目有兴趣可到QQ 2749_83126 交流
 
